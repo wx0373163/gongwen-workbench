@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公文自动排版工作台</title>
+<style>
+:root {
+    --primary: #1a3c6e;
+    --primary-light: #2d5a9e;
+    --primary-bg: #eef2f9;
+    --accent: #c8961e;
+    --bg: #f0f2f5;
+    --card-bg: #ffffff;
+    --text: #1f2937;
+    --text-light: #6b7280;
+    --text-lighter: #9ca3af;
+    --border: #e5e7eb;
+    --border-dark: #d1d5db;
+    --success: #10b981;
+    --success-bg: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-bg: #fffbeb;
+    --danger: #ef4444;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+    --radius: 10px;
+    --radius-sm: 6px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+/* Header */
+.app-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    padding: 18px 32px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.app-header .icon-box {
+    width: 42px; height: 42px;
+    background: rgba(255,255,255,0.15);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+}
+.app-header h1 { font-size: 20px; font-weight: 600; }
+.app-header .subtitle { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+
+/* Main Layout */
+.main-container {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1500px;
+    margin: 0 auto;
+    align-items: start;
+}
+
+/* Card */
+.card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+/* Input Panel */
+.input-panel { position: sticky; top: 20px; }
+.card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+}
+.card-header .dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+}
+
+.tab-switcher {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    color: var(--text-light);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+}
+.tab-btn:hover:not(.active) { color: var(--text); background: #f9fafb; }
+
+.tab-content { padding: 20px; }
+.tab-content > div { display: none; }
+.tab-content > div.active { display: block; }
+
+/* Upload Zone */
+.upload-zone {
+    border: 2px dashed var(--border-dark);
+    border-radius: var(--radius-sm);
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+}
+.upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--primary-light);
+    background: var(--primary-bg);
+}
+.upload-zone .upload-icon {
+    font-size: 40px;
+    color: var(--text-lighter);
+    margin-bottom: 12px;
+}
+.upload-zone p { font-size: 14px; color: var(--text-light); margin-bottom: 4px; }
+.upload-zone .hint { font-size: 12px; color: var(--text-lighter); }
+.upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.file-info {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--success-bg);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--success);
+    display: none;
+    align-items: center;
+    gap: 8px;
+}
+.file-info.show { display: flex; }
+
+/* Paste Zone */
+.paste-zone textarea {
+    width: 100%;
+    min-height: 240px;
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 14px;
+    font-family: "Microsoft YaHei", sans-serif;
+    resize: vertical;
+    line-height: 1.8;
+    transition: border-color 0.2s;
+}
+.paste-zone textarea:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(45,90,158,0.1);
+}
+.paste-zone .btn-analyze {
+    margin-top: 12px;
+    width: 100%;
+    padding: 10px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+.paste-zone .btn-analyze:hover { background: var(--primary-light); }
+
+/* Preview Panel */
+.preview-panel .card-header { justify-content: space-between; }
+.preview-panel .card-header .actions { display: flex; gap: 8px; align-items: center; }
+.btn {
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-outline { background: white; border: 1px solid var(--border-dark); color: var(--text); }
+.btn-outline:hover { border-color: var(--primary-light); color: var(--primary); }
+.btn-accent { background: var(--accent); color: white; }
+.btn-accent:hover { background: #b58318; }
+.btn-export {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+}
+.btn-export:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.btn-export:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Format Rules */
+.format-rules {
+    border-bottom: 1px solid var(--border);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+.format-rules.expanded { max-height: 600px; }
+.format-rules-inner { padding: 16px 18px; }
+.format-rules-inner h4 { font-size: 13px; color: var(--text-light); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.rules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+.rule-item {
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid;
+    font-size: 13px;
+}
+.rule-item .rule-label { font-weight: 600; font-size: 12px; margin-bottom: 2px; }
+.rule-item .rule-font { color: var(--text-light); font-size: 12px; }
+
+/* Structure Preview */
+.structure-preview {
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+.element-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 18px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.15s;
+}
+.element-item:hover { background: #f9fafb; }
+.element-badge {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: center;
+    color: white;
+}
+.element-text {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    word-break: break-all;
+    cursor: text;
+    padding: 2px 4px;
+    border-radius: 3px;
+    outline: none;
+}
+.element-text:focus {
+    background: #fffbeb;
+    box-shadow: 0 0 0 2px rgba(245,158,11,0.2);
+}
+.element-select {
+    flex-shrink: 0;
+    padding: 3px 6px;
+    font-size: 12px;
+    border: 1px solid var(--border-dark);
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text);
+}
+.element-select:focus { outline: none; border-color: var(--primary-light); }
+
+.element-delete {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    border: none;
+    background: none;
+    color: var(--text-lighter);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.element-delete:hover { background: #fef2f2; color: var(--danger); }
+
+/* Empty State */
+.empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-lighter);
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+/* Settings Bar */
+.settings-bar {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    background: #f9fafb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.setting-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+.setting-group label { white-space: nowrap; }
+.setting-group input[type="range"] {
+    width: 140px;
+    accent-color: var(--primary);
+}
+.setting-group .value-display {
+    min-width: 50px;
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 13px;
+}
+
+/* Color coding for element types */
+.badge-title { background: #1a3c6e; }
+.badge-h1 { background: #d4380d; }
+.badge-h2 { background: #c8961e; }
+.badge-h3 { background: #096dd9; }
+.badge-h4 { background: #389e0d; }
+.badge-numeric { background: #531dab; }
+.badge-body { background: #6b7280; }
+
+.border-title { border-color: #1a3c6e; }
+.border-h1 { border-color: #d4380d; }
+.border-h2 { border-color: #c8961e; }
+.border-h3 { border-color: #096dd9; }
+.border-h4 { border-color: #389e0d; }
+.border-numeric { border-color: #531dab; }
+.border-body { border-color: #6b7280; }
+
+/* Status messages */
+.status-msg {
+    padding: 10px 18px;
+    font-size: 13px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+}
+.status-msg.show { display: flex; }
+.status-msg.success { background: var(--success-bg); color: var(--success); }
+.status-msg.error { background: #fef2f2; color: var(--danger); }
+.status-msg.info { background: var(--primary-bg); color: var(--primary); }
+
+/* Loading */
+.loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+.loading-overlay.show { display: flex; }
+.spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Footer */
+.app-footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-lighter);
+    font-size: 12px;
+}
+
+/* Scrollbar */
+.structure-preview::-webkit-scrollbar { width: 6px; }
+.structure-preview::-webkit-scrollbar-track { background: transparent; }
+.structure-preview::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 3px; }
+.structure-preview::-webkit-scrollbar-thumb:hover { background: var(--text-lighter); }
+
+@media (max-width: 900px) {
+    .main-container { grid-template-columns: 1fr; }
+    .input-panel { position: static; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+    <div class="icon-box">&#128221;</div>
+    <div>
+        <h1>公文自动排版工作台</h1>
+        <div class="subtitle">上传文档 → 自动识别结构 → 按公文规范排版 → 导出 Word</div>
+    </div>
+</div>
+
+<div class="main-container">
+    <!-- Left: Input Panel -->
+    <div class="card input-panel">
+        <div class="card-header">
+            <span class="dot"></span>
+            文档输入
+        </div>
+        <div class="tab-switcher">
+            <button class="tab-btn active" data-tab="upload">&#128206; 上传文件</button>
+            <button class="tab-btn" data-tab="paste">&#9999;&#65039; 粘贴文本</button>
+        </div>
+        <div class="tab-content">
+            <div id="tab-upload" class="active">
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-icon">&#128193;</div>
+                    <p>点击或拖拽文件到此处</p>
+                    <div class="hint">支持 .docx / .txt 格式</div>
+                    <input type="file" id="fileInput" accept=".docx,.txt">
+                </div>
+                <div class="file-info" id="fileInfo">
+                    <span>&#9989;</span>
+                    <span id="fileName"></span>
+                </div>
+            </div>
+            <div id="tab-paste">
+                <div class="paste-zone">
+                    <textarea id="pasteArea" placeholder="在此粘贴公文文本内容...&#10;&#10;系统将自动识别题目、各级标题和正文结构。&#10;&#10;识别规则：&#10;一、 → 一级标题（黑体）&#10;（一） → 二级标题（楷体）&#10;1. → 三级标题（仿宋）&#10;（1） → 四级标题（仿宋）&#10;首行 → 题目（方正小标宋）&#10;其余 → 正文（仿宋）"></textarea>
+                    <div style="display:flex;gap:8px;margin-top:12px;">
+                        <button class="btn-analyze" id="btnAnalyzePaste" style="flex:1;">&#128269; 解析文本结构</button>
+                        <button class="btn-analyze" id="btnLoadSample" style="flex:0 0 auto;background:var(--text-light);">&#128221; 示例</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Preview & Export -->
+    <div class="card preview-panel">
+        <div class="card-header">
+            <span style="display:flex;align-items:center;gap:8px;"><span class="dot"></span>排版预览与调整</span>
+            <div class="actions">
+                <button class="btn btn-outline btn-sm" id="btnToggleRules">&#128196; 排版规范</button>
+                <button class="btn btn-outline btn-sm" id="btnAddElement" title="添加新段落">&#43; 添加段落</button>
+            </div>
+        </div>
+
+        <div class="format-rules" id="formatRules">
+            <div class="format-rules-inner">
+                <h4>公文排版格式规范</h4>
+                <div class="rules-grid" id="rulesGrid"></div>
+            </div>
+        </div>
+
+        <div class="status-msg info" id="statusMsg"></div>
+
+        <div class="structure-preview" id="structurePreview">
+            <div class="empty-state">
+                <div class="icon">&#128194;</div>
+                <p>请上传文档或粘贴文本以开始</p>
+            </div>
+        </div>
+
+        <div class="settings-bar">
+            <div class="setting-group">
+                <label>行距：</label>
+                <input type="range" id="lineSpacingSlider" min="33" max="36" value="35" step="1">
+                <span class="value-display"><span id="lineSpacingValue">35</span>磅</span>
+            </div>
+            <button class="btn btn-export" id="btnExport" disabled>
+                &#128190; 导出排版文档
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="app-footer">
+    公文自动排版工作台 | 字体规范：方正小标宋 / 仿宋GB2312 / 黑体 / 楷体GB2312 | 导出格式：.docx
+    <br>制作：王啸（wangxiao@hrbu.edu.cn）　个人学习，仅供参考
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div style="text-align:center;">
+        <div class="spinner"></div>
+        <p style="margin-top:12px;color:var(--text-light);" id="loadingText">正在处理...</p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    // ========== 格式配置 ==========
+    var FORMAT_CONFIG = {
+        title: {
+            label: '题目',
+            font: { ascii: 'Times New Roman', eastAsia: '方正小标宋简体' },
+            size: 44,
+            bold: false,
+            alignment: 'center',
+            color: '000000'
+        },
+        body: {
+            label: '正文',
+            font: { ascii: 'Times New Roman', eastAsia: '仿宋_GB2312' },
+            size: 32,
+            bold: false,
+            alignment: 'justify',
+            color: '000000'
+        },
+        h1: {
+            label: '一级标题',
+            font: { ascii: 'Times New Roman', eastAsia: '黑体' },
+            size: 32,
+            bold: false,
+            alignment: 'justify',
+            color: '000000'
+        },
+        h2: {
+            label: '二级标题',
+            font: { ascii: 'Times New Roman', eastAsia: '楷体_GB2312' },
+            size: 32,
+            bold: false,
+            alignment: 'justify',
+            color: '000000'
+        },
+        h3: {
+            label: '三级标题',
+            font: { ascii: 'Times New Roman', eastAsia: '仿宋_GB2312' },
+            size: 32,
+            bold: false,
+            alignment: 'justify',
+            color: '000000'
+        },
+        h4: {
+            label: '四级标题',
+            font: { ascii: 'Times New Roman', eastAsia: '仿宋_GB2312' },
+            size: 32,
+            bold: false,
+            alignment: 'justify',
+            color: '000000'
+        },
+        numeric: {
+            label: '数字标题',
+            font: { ascii: 'Times New Roman', eastAsia: 'Times New Roman' },
+            size: 32,
+            bold: false,
+            alignment: 'justify',
+            color: '000000'
+        }
+    };
+
+    var PAGE_MARGINS = { top: 2098, bottom: 1984, left: 1587, right: 1474 };
+    var TYPE_ORDER = ['title', 'h1', 'h2', 'h3', 'h4', 'numeric', 'body'];
+
+    // ========== 状态 ==========
+    var elements = [];
+    var lineSpacingPt = 35;
+
+    // ========== DOM 引用 ==========
+    var $ = function(id) { return document.getElementById(id); };
+    var uploadZone = $('uploadZone');
+    var fileInput = $('fileInput');
+    var fileInfo = $('fileInfo');
+    var fileName = $('fileName');
+    var pasteArea = $('pasteArea');
+    var btnAnalyzePaste = $('btnAnalyzePaste');
+    var structurePreview = $('structurePreview');
+    var statusMsg = $('statusMsg');
+    var btnExport = $('btnExport');
+    var btnToggleRules = $('btnToggleRules');
+    var btnAddElement = $('btnAddElement');
+    var formatRules = $('formatRules');
+    var rulesGrid = $('rulesGrid');
+    var lineSpacingSlider = $('lineSpacingSlider');
+    var lineSpacingValue = $('lineSpacingValue');
+    var loadingOverlay = $('loadingOverlay');
+    var loadingText = $('loadingText');
+
+    // ========== 工具函数 ==========
+    function escapeXml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&apos;');
+    }
+
+    function showStatus(msg, type) {
+        statusMsg.textContent = msg;
+        statusMsg.className = 'status-msg show ' + (type || 'info');
+        setTimeout(function() { statusMsg.className = 'status-msg'; }, 5000);
+    }
+
+    function showLoading(text) {
+        loadingText.textContent = text || '正在处理...';
+        loadingOverlay.classList.add('show');
+    }
+
+    function hideLoading() {
+        loadingOverlay.classList.remove('show');
+    }
+
+    function ptToTwips(pt) {
+        return Math.round(pt * 20);
+    }
+
+    function cmToTwips(cm) {
+        return Math.round(cm * 567);
+    }
+
+    // ========== 排版规范展示 ==========
+    function renderRules() {
+        var html = '';
+        var rules = [
+            { type: 'title', desc: '方正小标宋简体，二号(22pt)' },
+            { type: 'body', desc: '仿宋_GB2312，三号(16pt)' },
+            { type: 'h1', desc: '黑体，三号(16pt)' },
+            { type: 'h2', desc: '楷体_GB2312，三号(16pt)' },
+            { type: 'h3', desc: '仿宋_GB2312，三号(16pt)' },
+            { type: 'h4', desc: '仿宋_GB2312，三号(16pt)' },
+            { type: 'numeric', desc: 'Times New Roman，三号(16pt)' }
+        ];
+        rules.forEach(function(r) {
+            var cfg = FORMAT_CONFIG[r.type];
+            html += '<div class="rule-item border-' + r.type + '">'
+                + '<div class="rule-label">' + cfg.label + '</div>'
+                + '<div class="rule-font">' + r.desc + '</div>'
+                + '</div>';
+        });
+        html += '<div class="rule-item border-body">'
+            + '<div class="rule-label">行距</div>'
+            + '<div class="rule-font">固定值33-36磅</div>'
+            + '</div>';
+        html += '<div class="rule-item border-body">'
+            + '<div class="rule-label">页边距</div>'
+            + '<div class="rule-font">上3.7 下3.5 左2.8 右2.6cm</div>'
+            + '</div>';
+        html += '<div class="rule-item border-body">'
+            + '<div class="rule-label">页码</div>'
+            + '<div class="rule-font">宋体，四号(14pt)</div>'
+            + '</div>';
+        rulesGrid.innerHTML = html;
+    }
+
+    // ========== 结构识别 ==========
+    var CN_NUM = '[一二三四五六七八九十百千万]+';
+
+    function isLevel1(line) {
+        return new RegExp('^' + CN_NUM + '[、.．]').test(line);
+    }
+
+    function isLevel2(line) {
+        return new RegExp('^[（(]' + CN_NUM + '[)）]').test(line);
+    }
+
+    function isLevel3(line) {
+        return /^\d+[.、．]/.test(line);
+    }
+
+    function isLevel4(line) {
+        return /^[（(]\d+[)）]/.test(line);
+    }
+
+    function isNumericHeading(line) {
+        return /^\d+(\.\d+)+[\s.、]/.test(line) || /^[第]?\d+[章节条]/.test(line);
+    }
+
+    function detectStructure(text) {
+        var lines = text.split(/\r?\n/);
+        var result = [];
+        var titleFound = false;
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].replace(/^[\s\u3000]+/, '').replace(/[\s\u3000]+$/, '');
+            if (line.length === 0) continue;
+
+            var elem = { text: line, type: 'body' };
+
+            if (!titleFound) {
+                if (!isLevel1(line) && !isLevel2(line) && !isLevel3(line) &&
+                    !isLevel4(line) && !isNumericHeading(line)) {
+                    elem.type = 'title';
+                    titleFound = true;
+                } else {
+                    elem.type = 'title';
+                    titleFound = true;
+                }
+            } else {
+                if (isLevel1(line)) {
+                    elem.type = 'h1';
+                } else if (isLevel2(line)) {
+                    elem.type = 'h2';
+                } else if (isNumericHeading(line)) {
+                    elem.type = 'numeric';
+                } else if (isLevel3(line)) {
+                    elem.type = 'h3';
+                } else if (isLevel4(line)) {
+                    elem.type = 'h4';
+                } else {
+                    elem.type = 'body';
+                }
+            }
+
+            result.push(elem);
+        }
+        return result;
+    }
+
+    // ========== 预览渲染 ==========
+    function renderPreview() {
+        if (elements.length === 0) {
+            structurePreview.innerHTML = '<div class="empty-state">'
+                + '<div class="icon">&#128194;</div>'
+                + '<p>请上传文档或粘贴文本以开始</p>'
+                + '</div>';
+            btnExport.disabled = true;
+            return;
+        }
+
+        btnExport.disabled = false;
+        var html = '';
+        elements.forEach(function(elem, idx) {
+            var cfg = FORMAT_CONFIG[elem.type] || FORMAT_CONFIG.body;
+            html += '<div class="element-item" data-index="' + idx + '">'
+                + '<span class="element-badge badge-' + elem.type + '">' + cfg.label + '</span>'
+                + '<div class="element-text" contenteditable="true" data-index="' + idx + '">' + escapeHtml(elem.text) + '</div>'
+                + '<select class="element-select" data-index="' + idx + '">';
+            TYPE_ORDER.forEach(function(t) {
+                html += '<option value="' + t + '"' + (t === elem.type ? ' selected' : '') + '>' + FORMAT_CONFIG[t].label + '</option>';
+            });
+            html += '</select>'
+                + '<button class="element-delete" data-index="' + idx + '" title="删除">&times;</button>'
+                + '</div>';
+        });
+        structurePreview.innerHTML = html;
+
+        var selects = structurePreview.querySelectorAll('.element-select');
+        selects.forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                var idx = parseInt(this.dataset.index);
+                elements[idx].type = this.value;
+                renderPreview();
+            });
+        });
+
+        var texts = structurePreview.querySelectorAll('.element-text');
+        texts.forEach(function(txt) {
+            txt.addEventListener('blur', function() {
+                var idx = parseInt(this.dataset.index);
+                elements[idx].text = this.textContent;
+            });
+            txt.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                }
+            });
+        });
+
+        var dels = structurePreview.querySelectorAll('.element-delete');
+        dels.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var idx = parseInt(this.dataset.index);
+                elements.splice(idx, 1);
+                renderPreview();
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // ========== 文件读取 ==========
+    function handleFile(file) {
+        var ext = file.name.split('.').pop().toLowerCase();
+        showLoading('正在读取文件...');
+
+        if (ext === 'docx') {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var arrayBuffer = e.target.result;
+                mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                    .then(function(result) {
+                        hideLoading();
+                        var text = result.value;
+                        if (!text || text.trim().length === 0) {
+                            showStatus('文档内容为空，请检查文件', 'error');
+                            return;
+                        }
+                        elements = detectStructure(text);
+                        renderPreview();
+                        showStatus('成功解析 ' + elements.length + ' 个段落', 'success');
+                    })
+                    .catch(function(err) {
+                        hideLoading();
+                        showStatus('解析docx失败：' + err.message, 'error');
+                    });
+            };
+            reader.readAsArrayBuffer(file);
+        } else if (ext === 'txt') {
+            var reader2 = new FileReader();
+            reader2.onload = function(e) {
+                hideLoading();
+                var text = e.target.result;
+                elements = detectStructure(text);
+                renderPreview();
+                showStatus('成功解析 ' + elements.length + ' 个段落', 'success');
+            };
+            reader2.onerror = function() {
+                hideLoading();
+                showStatus('文件读取失败', 'error');
+            };
+            reader2.readAsText(file, 'UTF-8');
+        } else {
+            hideLoading();
+            showStatus('不支持的文件格式，请上传 .docx 或 .txt 文件', 'error');
+        }
+    }
+
+    // ========== DOCX 生成 ==========
+    function generateDocx() {
+        if (typeof JSZip === 'undefined') {
+            showStatus('JSZip库未加载，请检查网络连接', 'error');
+            return;
+        }
+
+        showLoading('正在生成排版文档...');
+
+        var zip = new JSZip();
+        var lineSpacingTwips = ptToTwips(lineSpacingPt);
+
+        // [Content_Types].xml
+        var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            + '<Default Extension="xml" ContentType="application/xml"/>'
+            + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+            + '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'
+            + '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+            + '</Types>';
+
+        // _rels/.rels
+        var rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+            + '</Relationships>';
+
+        // word/_rels/document.xml.rels
+        var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>'
+            + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            + '</Relationships>';
+
+        // word/styles.xml
+        var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            + '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            + '<w:docDefaults>'
+            + '<w:rPrDefault>'
+            + '<w:rPr>'
+            + '<w:rFonts w:ascii="Times New Roman" w:eastAsia="仿宋_GB2312" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>'
+            + '<w:sz w:val="32"/>'
+            + '<w:szCs w:val="32"/>'
+            + '</w:rPr>'
+            + '</w:rPrDefault>'
+            + '<w:pPrDefault>'
+            + '<w:pPr>'
+            + '<w:spacing w:line="' + lineSpacingTwips + '" w:lineRule="exact"/>'
+            + '</w:pPr>'
+            + '</w:pPrDefault>'
+            + '</w:docDefaults>'
+            + '<w:style w:type="paragraph" w:styleId="Normal">'
+            + '<w:name w:val="Normal"/>'
+            + '<w:qFormat/>'
+            + '</w:style>'
+            + '</w:styles>';
+
+        // word/document.xml
+        var docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            + '<w:body>';
+
+        elements.forEach(function(elem) {
+            docXml += createParagraphXml(elem, lineSpacingTwips);
+        });
+
+        // Section properties (page margins + footer reference)
+        docXml += '<w:sectPr>'
+            + '<w:footerReference w:type="default" r:id="rId1"/>'
+            + '<w:pgSz w:w="11906" w:h="16838"/>'  // A4
+            + '<w:pgMar w:top="' + PAGE_MARGINS.top + '" w:bottom="' + PAGE_MARGINS.bottom
+            + '" w:left="' + PAGE_MARGINS.left + '" w:right="' + PAGE_MARGINS.right
+            + '" w:header="850" w:footer="992" w:gutter="0"/>'
+            + '<w:cols w:space="425"/>'
+            + '</w:sectPr>';
+
+        docXml += '</w:body></w:document>';
+
+        // word/footer1.xml (page number)
+        var footerXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            + '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            + '<w:p>'
+            + '<w:pPr>'
+            + '<w:jc w:val="center"/>'
+            + '<w:rPr>'
+            + '<w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体" w:cs="宋体"/>'
+            + '<w:sz w:val="28"/>'
+            + '<w:szCs w:val="28"/>'
+            + '</w:rPr>'
+            + '</w:pPr>'
+            + '<w:r>'
+            + '<w:rPr>'
+            + '<w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体" w:cs="宋体"/>'
+            + '<w:sz w:val="28"/>'
+            + '<w:szCs w:val="28"/>'
+            + '</w:rPr>'
+            + '<w:fldChar w:fldCharType="begin"/>'
+            + '</w:r>'
+            + '<w:r>'
+            + '<w:rPr>'
+            + '<w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体" w:cs="宋体"/>'
+            + '<w:sz w:val="28"/>'
+            + '<w:szCs w:val="28"/>'
+            + '</w:rPr>'
+            + '<w:instrText xml:space="preserve"> PAGE </w:instrText>'
+            + '</w:r>'
+            + '<w:r>'
+            + '<w:rPr>'
+            + '<w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体" w:cs="宋体"/>'
+            + '<w:sz w:val="28"/>'
+            + '<w:szCs w:val="28"/>'
+            + '</w:rPr>'
+            + '<w:fldChar w:fldCharType="end"/>'
+            + '</w:r>'
+            + '</w:p>'
+            + '</w:ftr>';
+
+        // Write files to zip
+        zip.file('[Content_Types].xml', contentTypes);
+        zip.file('_rels/.rels', rootRels);
+        zip.file('word/_rels/document.xml.rels', docRels);
+        zip.file('word/document.xml', docXml);
+        zip.file('word/footer1.xml', footerXml);
+        zip.file('word/styles.xml', styles);
+
+        zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+            .then(function(blob) {
+                hideLoading();
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = '公文排版_' + formatDate(new Date()) + '.docx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+                showStatus('文档已成功导出！', 'success');
+            })
+            .catch(function(err) {
+                hideLoading();
+                showStatus('生成文档失败：' + err.message, 'error');
+            });
+    }
+
+    function formatDate(d) {
+        var y = d.getFullYear();
+        var m = ('0' + (d.getMonth() + 1)).slice(-2);
+        var day = ('0' + d.getDate()).slice(-2);
+        return y + m + day;
+    }
+
+    function createParagraphXml(elem, lineSpacingTwips) {
+        var cfg = FORMAT_CONFIG[elem.type] || FORMAT_CONFIG.body;
+        var text = escapeXml(elem.text);
+        if (!text) text = '';
+
+        var alignMap = { center: 'center', justify: 'both', left: 'left', right: 'right' };
+        var align = alignMap[cfg.alignment] || 'both';
+
+        var fontAscii = cfg.font.ascii || 'Times New Roman';
+        var fontEastAsia = cfg.font.eastAsia || '仿宋_GB2312';
+        var fontSize = cfg.size || 32;
+
+        var indentXml = '';
+        if (elem.type !== 'title') {
+            var indentTwips = fontSize * 20; // 2 CJK chars = 2 * (fontSize/2)pt = fontSize pt * 20 twips/pt
+            indentXml = '<w:ind w:firstLine="' + indentTwips + '"/>';
+        }
+
+        var paraXml = '<w:p>'
+            + '<w:pPr>'
+            + '<w:spacing w:line="' + lineSpacingTwips + '" w:lineRule="exact" w:before="0" w:after="0"/>'
+            + '<w:jc w:val="' + align + '"/>'
+            + indentXml
+            + '<w:rPr>'
+            + '<w:rFonts w:ascii="' + fontAscii + '" w:eastAsia="' + fontEastAsia + '" w:hAnsi="' + fontAscii + '" w:cs="' + fontAscii + '"/>'
+            + '<w:sz w:val="' + fontSize + '"/>'
+            + '<w:szCs w:val="' + fontSize + '"/>'
+            + '<w:b w:val="false"/>'
+            + '<w:bCs w:val="false"/>'
+            + '</w:rPr>'
+            + '</w:pPr>'
+            + '<w:r>'
+            + '<w:rPr>'
+            + '<w:rFonts w:ascii="' + fontAscii + '" w:eastAsia="' + fontEastAsia + '" w:hAnsi="' + fontAscii + '" w:cs="' + fontAscii + '"/>'
+            + '<w:sz w:val="' + fontSize + '"/>'
+            + '<w:szCs w:val="' + fontSize + '"/>'
+            + '<w:b w:val="false"/>'
+            + '<w:bCs w:val="false"/>'
+            + '</w:rPr>'
+            + '<w:t xml:space="preserve">' + text + '</w:t>'
+            + '</w:r>'
+            + '</w:p>';
+
+        return paraXml;
+    }
+
+    // ========== 事件处理 ==========
+    function setupEvents() {
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var tab = this.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+                document.querySelectorAll('.tab-content > div').forEach(function(d) { d.classList.remove('active'); });
+                this.classList.add('active');
+                $('tab-' + tab).classList.add('active');
+            });
+        });
+
+        // File upload - click
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                var file = e.target.files[0];
+                fileName.textContent = file.name;
+                fileInfo.classList.add('show');
+                handleFile(file);
+            }
+        });
+
+        // File upload - drag & drop
+        uploadZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                var file = e.dataTransfer.files[0];
+                fileName.textContent = file.name;
+                fileInfo.classList.add('show');
+                handleFile(file);
+            }
+        });
+
+        // Paste analyze
+        btnAnalyzePaste.addEventListener('click', function() {
+            var text = pasteArea.value.trim();
+            if (!text) {
+                showStatus('请先粘贴文本内容', 'error');
+                return;
+            }
+            showLoading('正在解析文本...');
+            setTimeout(function() {
+                elements = detectStructure(text);
+                renderPreview();
+                hideLoading();
+                showStatus('成功解析 ' + elements.length + ' 个段落', 'success');
+            }, 300);
+        });
+
+        // Load sample text
+        $('btnLoadSample').addEventListener('click', function() {
+            var sample = '关于推进数字化转型的实施意见\n'
+                + '\n'
+                + '为深入贯彻落实数字中国建设战略，加快推进数字化转型工作，现就有关事项通知如下。\n'
+                + '\n'
+                + '一、总体要求\n'
+                + '\n'
+                + '坚持以数字化转型为引领，推动经济社会高质量发展。到2026年，建成数字政府体系框架，数字产业化水平显著提升。\n'
+                + '\n'
+                + '二、主要任务\n'
+                + '\n'
+                + '（一）加快数字基础设施建设\n'
+                + '\n'
+                + '推进5G网络深度覆盖，加快千兆光纤网络建设。到2026年底，实现城市地区5G网络全覆盖，行政村5G通达率达到95%以上。\n'
+                + '\n'
+                + '1.强化网络支撑能力\n'
+                + '\n'
+                + '完善宽带网络基础设施布局，提升网络带宽和传输效率。推进IPv6规模部署和应用。\n'
+                + '\n'
+                + '（1）优化骨干网络架构\n'
+                + '\n'
+                + '加快建设新型互联网交换中心，提升网络互联互通水平。\n'
+                + '\n'
+                + '（二）推动产业数字化转型\n'
+                + '\n'
+                + '深化新一代信息技术与制造业融合发展，推进工业互联网平台建设。\n'
+                + '\n'
+                + '2.提升企业数字化水平\n'
+                + '\n'
+                + '实施中小企业数字化赋能行动，开展数字化改造试点示范。\n'
+                + '\n'
+                + '（3）建设智慧园区\n'
+                + '\n'
+                + '打造一批数字化示范园区，提升园区管理智能化水平。\n'
+                + '\n'
+                + '三、保障措施\n'
+                + '\n'
+                + '（一）加强组织领导\n'
+                + '\n'
+                + '成立数字化转型工作领导小组，统筹协调推进各项工作。\n'
+                + '\n'
+                + '（二）加大资金投入\n'
+                + '\n'
+                + '各级财政要加大对数字化转型的资金支持力度，引导社会资本参与。\n'
+                + '\n'
+                + '2026年1月1日';
+            pasteArea.value = sample;
+            var event = new Event('click');
+            btnAnalyzePaste.dispatchEvent(event);
+        });
+
+        // Toggle rules
+        btnToggleRules.addEventListener('click', function() {
+            formatRules.classList.toggle('expanded');
+        });
+
+        // Add element
+        btnAddElement.addEventListener('click', function() {
+            elements.push({ text: '新段落内容', type: 'body' });
+            renderPreview();
+            // Scroll to bottom
+            structurePreview.scrollTop = structurePreview.scrollHeight;
+        });
+
+        // Line spacing slider
+        lineSpacingSlider.addEventListener('input', function() {
+            lineSpacingPt = parseInt(this.value);
+            lineSpacingValue.textContent = lineSpacingPt;
+        });
+
+        // Export
+        btnExport.addEventListener('click', function() {
+            if (elements.length === 0) {
+                showStatus('没有可导出的内容', 'error');
+                return;
+            }
+            // Sync text from editable fields
+            var texts = structurePreview.querySelectorAll('.element-text');
+            texts.forEach(function(txt) {
+                var idx = parseInt(txt.dataset.index);
+                if (elements[idx]) {
+                    elements[idx].text = txt.textContent;
+                }
+            });
+            generateDocx();
+        });
+    }
+
+    // ========== 初始化 ==========
+    function init() {
+        renderRules();
+        setupEvents();
+        formatRules.classList.add('expanded');
+        setTimeout(function() { formatRules.classList.remove('expanded'); }, 3000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+</body>
+</html>
